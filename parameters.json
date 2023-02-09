@@ -1,0 +1,29 @@
+{
+  "data_path":
+  {
+    "CT_data_root": "../DATA/22_oct_Coronary_Artery_CT/",
+    "image_path": "nii/image",
+    "mask_path": "nii/mask",
+    "cl_save_path": "centerline/txt",
+    "cl_vis_path": "centerline/vis",
+    "plaque_info_path": "plaque",
+    "MPR_save_path": "MPR/mat",
+    "MPR_vis_path": "MPR/vis"
+  },
+  "artery_extract":
+  {
+    "artery_points_num_min": 30,
+    "artery_points_num_max": 150
+  },
+  "preprocessing":
+  {
+    "cl_interpolate_min": 80,
+    "cl_interpolate_max": 600,
+    "gray_max": 3000,
+    "gray_min": -200
+  },
+  "MPR":
+  {
+    "slice_width": 32
+  }
+}
