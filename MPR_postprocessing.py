@@ -1,4 +1,18 @@
 """
+Created on 02/09/2023
+
+@author: ZhangRuarua
+
+"""
+
+# 几种MPR后处理方案
+# （1）MPR的插值截面过小，导致一些较粗的血管无法完全显示或者感觉上大的走样的：调大slice_width；
+# （2）MPR的插值截面过大，导致一张图片中出现其他血管的主要段落：调小slice_width；
+# （3）连接断裂处或者就断裂处切开分开保存，有些太糟糕的可以扔了。每个血管或多或少都断，处理明显断裂的：连接断裂处，或者分为两段存储；
+# （4）这种情况中会有断裂或者遇见交叉点发生：可以去分开粗的和细的，或者保留。
+# 这几种方法可能需要进行一些手动调试
+
+"""
 Created on 02/07/2023
 
 @author: ZhangRuarua
@@ -18,7 +32,7 @@ from tqdm import tqdm
 import cv2
 import skimage
 import scipy.io as scio
-from utils.tools import load_centerline
+from utils.tools import load_centerline, find_plaque
 from vis.vis import vis_slice
 
 
@@ -175,41 +189,6 @@ def Interpolate(interpolate_space, bbox_points, I_cut, M = 'linear'):
     return out.reshape(out.shape[0], slice_width, -1)
 
 # 对待mask插值空间进行插值
-# def Interpolate_Mask(interpolate_space, bbox_points, I_cut, plaque_label = 254 ,M = 'nearest'):
-#     out = np.zeros([interpolate_space.shape[0], 1])
-#
-#     for i in tqdm(range(interpolate_space.shape[0])):
-#         slice = interpolate_space[i]
-#         slice = slice.reshape(-1, 3)
-#
-#         count = 0
-#         for j in range(slice.shape[0]):
-#             p = slice[j]
-#
-#             # 边界控制
-#             if p[0] >= I_cut.shape[0] - 2:
-#                 p[0] = I_cut.shape[0] - 3
-#             if p[1] >= I_cut.shape[1] - 2:
-#                 p[1] = I_cut.shape[1] - 3
-#             if p[2] >= I_cut.shape[2] - 2:
-#                 p[2] = I_cut.shape[2] - 3
-#
-#             if p[0] < 0:
-#                 p[0] = 0
-#             if p[1] < 0:
-#                 p[1] = 0
-#             if p[2] < 0:
-#                 p[2] = 0
-#
-#             result = interpn(bbox_points, I_cut, p, method=M)
-#             if result[0] == plaque_label:
-#                 # count = count + 1
-#                 out[i] = 1
-#                 break
-#         # if count >= 50:
-#         #     out[i] = 1
-#
-#     return out
 def Interpolate_Mask(MPR_MASK, plaque_label = 254):
     out = np.zeros([MPR_MASK.shape[0], 1])
 
@@ -219,6 +198,7 @@ def Interpolate_Mask(MPR_MASK, plaque_label = 254):
             out[i] = 1
 
     return out
+
 # mask_vec着色
 def colored_mask_vec(mask_vec, slice_width):
     colored_mask = np.zeros([mask_vec.shape[0], slice_width, 3])
@@ -232,7 +212,7 @@ def colored_mask_vec(mask_vec, slice_width):
 
 
 if __name__ == '__main__':
-    with open('parameters.json') as f:
+    with open('parameters_copy.json') as f:
         parameters = json.load(f)
 
     # 需要的路径
@@ -246,7 +226,7 @@ if __name__ == '__main__':
     MPR_save_path = os.path.join(parameters['data_path']['CT_data_root'], parameters['data_path']['MPR_save_path'])
     MPR_vis_path = os.path.join(parameters['data_path']['CT_data_root'], parameters['data_path']['MPR_vis_path'])
 
-    with open(os.path.join(CT_data_root, plaque_info_path, 'lines.txt'), 'r') as f:
+    with open(os.path.join(CT_data_root, plaque_info_path, 'lines_2.txt'), 'r') as f:
     # with open('./debug_tmpfile/lines.txt', 'r') as f:
         lines_cross_the_plaque_fp_list = f.readlines()
 
@@ -294,7 +274,6 @@ if __name__ == '__main__':
         slice_width = parameters['MPR']['slice_width']
         interpolate_space = Pi_slice(cl_points, slice_width, V_1, V_2)
 
-
         # 构建下文件夹
         if not os.path.exists(os.path.join(MPR_save_path, 'image')):
             os.makedirs(os.path.join(MPR_save_path, 'image'))
@@ -326,7 +305,6 @@ if __name__ == '__main__':
             mask_vec = Interpolate_Mask(MPR_MASK)
             # 存储mask_vec
             scio.savemat(os.path.join(MPR_save_path, 'mask_vec', line_name+'.mat'), {'MPR_MASK_VEC': mask_vec})
-
 
 
         ### 存图，只存血管剖面
@@ -362,7 +340,14 @@ if __name__ == '__main__':
         cv2.imwrite(t_fp_3, cv2.resize(img_add, size))
 
         # 存截面
-        vis_slice(MPR_save_path, nii_c=line_name.split('_')[0], artery_n=line_name.split('_')[-1])
+        vis_slice('/'.join(MPR_save_path.split('/')[0:-1]), nii_c=line_name.split('_')[0], artery_n=line_name.split('_')[-1])
+
+
+
+
+
+
+
 
 
 

@@ -12,8 +12,8 @@ from tqdm import tqdm
 from utils.static import NBH_Creator
 import nibabel as nib
 import pandas as pd
-# from vis.vis import plot_mask
 import re
+import scipy.io as scio
 
 # 从txt读取中心线点集
 def load_centerline(fp):

@@ -13,8 +13,9 @@ from utils.tools import find_centerline
 import matplotlib.colors as mcolors
 import random
 import colorsys
+import scipy.io as scio
+import cv2
 
-from sklearn.cluster import KMeans
 
 def get_n_hls_colors(num):
     hls_colors = []
@@ -124,18 +125,38 @@ def draw_points(P_list, y_p):
     ax.scatter(Y, X, Z, c=y_p, marker='*')
     plt.show()
 
-if __name__ == '__main__':
-    data_root_fp = '../../DATA/22_oct_Coronary_Artery_CT/nii/'
+def vis_slice(fp, nii_c, artery_n):
+    # 读取.mat
+    MPR_I = scio.loadmat(os.path.join(fp, 'mat/image', '{}_{}.mat'.format(nii_c, artery_n)))['MPR_I']
+    MPR_MASK = scio.loadmat(os.path.join(fp, 'mat/mask', '{}_{}.mat'.format(nii_c, artery_n)))['MPR_MASK']
 
-    nii_n = 10
-    mask_fp = os.path.join(data_root_fp, 'mask/{}.nii.gz'.format(nii_n))
+    for i in range(0, MPR_I.shape[0]):
+        slice_I = MPR_I[i, :, :]
+        slice_I_T = np.zeros([slice_I.shape[0], slice_I.shape[1], 3])
+        slice_MASK = MPR_MASK[i, :, :]
+        slice_MASK_T = slice_I_T.copy()
+        # 着色
+        for j in range(3):
+            slice_I_T[:, :, j] = slice_I
+            slice_MASK_T[:, :, j] = slice_MASK
+
+        MASK_1 = np.where(slice_MASK_T == [1, 1, 1], [45, 10, 254], [0, 0, 0])
+        MASK_254 = np.where(slice_MASK_T == [254, 254, 254], [10, 230, 0], [0, 0, 0])
+        slice_MASK_T = MASK_1 + MASK_254
+        slice_MASK_T= slice_MASK_T.astype(np.float64)
+
+        ADD_I = cv2.addWeighted(slice_I_T, 0.6, slice_MASK_T, 0.4, gamma=0.0)
+
+        if not os.path.exists(os.path.join(fp, 'vis/slice', '{}_{}'.format(nii_c, artery_n))):
+            os.makedirs(os.path.join(fp, 'vis/slice', '{}_{}'.format(nii_c, artery_n)))
+
+        size = (int(ADD_I.shape[1] * 4), int(ADD_I.shape[0] * 4))
+        cv2.imwrite(os.path.join(fp, 'vis/slice', '{}_{}/{}.png'.format(nii_c, artery_n, i)), cv2.resize(ADD_I, size))
 
 
-    mask = nib.load(mask_fp).get_fdata().transpose(2, 1, 0)  # 为了符合一般习惯，transpose一下 z,y,x
-    mask = mask.astype(int)
 
 
-    mask = find_centerline(mask)
 
-    plot_mask(mask, plaque=False)
+
+
 
